@@ -1,0 +1,8 @@
+server:
+  port: 9010
+
+spring:
+  data:
+    mongodb:
+      uri: mongodb+srv://application_user:ncTNLiNbND5hPD5V@cluster0.nl2t8wl.mongodb.net/netcloud?retryWrites=true&w=majority&appName=Cluster0
+      database: netcloud

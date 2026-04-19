@@ -1,0 +1,38 @@
+package com.netcloud.dtos.servers;
+
+import lombok.*;
+
+import java.time.Instant;
+import java.util.concurrent.atomic.AtomicLong;
+
+@Data
+@Builder
+@AllArgsConstructor
+public class Server {
+    private String lbId;
+    private String tenantId;
+    private String serverIp;
+    private String healthUrl;
+    private String eventType;
+    private int healthTimeout;
+    private int backendPort;
+    private String ipAddress;
+    AtomicLong connectionCount;
+    long cpuUtilisation;
+    long memoryUtilisation;
+    int consecutiveSuccesses;
+    int consecutiveFailures;
+    double trafficWeight;
+    private String status;
+    private Instant lastChecked;
+    private Instant timestamp;
+    private int healthCheckInterval;
+    ServerState serverState;
+    public void incConnections() { connectionCount.incrementAndGet(); }
+    public void decConnections() { connectionCount.decrementAndGet(); }
+    public int incFailures() { consecutiveSuccesses = 0; return ++this.consecutiveSuccesses; }
+    public void resetFailures() { consecutiveFailures = 0; }
+    public int incSuccesses() { return ++consecutiveSuccesses; }
+    public void resetSuccesses() { consecutiveSuccesses = 0; }
+
+}

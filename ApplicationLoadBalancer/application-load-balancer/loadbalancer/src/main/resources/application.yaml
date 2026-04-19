@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: loadbalancer
+#      host: 10.160.0.5
+#      port: 6379
+#      password: ${REDIS_PASSWORD:}
+#      timeout: 2000
+#      lettuce:
+#        pool:
+#          max-active: 8
+#          max-idle: 8
+server:
+  port: 9006
+#
+#redis1:
+#  host: localhost
+#
+#redis2:
+#  host: localhost
+
+lbWebService:
+  host: localhost
+  port: 9090
+
+gcp:
+  meta-zone: http://metadata.google.internal/computeMetadata/v1/instance/zone
+
+netcloud:
+  secrets:
+    secret: js12gv54364874411fegrshrhe4terlfmry325

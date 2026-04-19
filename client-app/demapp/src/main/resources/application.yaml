@@ -1,0 +1,6 @@
+spring:
+  application:
+    name: demapp
+netcloud:
+  autodiscovery:
+    urls: http://localhost:9004/scg2Jf5D2YWHyRW5tPoBl2F8rdPwZfRVN-msxdtDHIOobLe11GoiiewAoztvs2qS

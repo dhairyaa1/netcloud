@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: control-plane
+netcloud:
+  secrets:
+    secret: js12gv54364874411fegrshrhe4terlfmry325
+
+server:
+  port: 9004
+
+control-plane:
+  instance-id: few21451dv
+  total-nodes: 1
+  health-check-interval: 5
+  recovery-threshold: 3
+  health-check-timeout: 5
+  dead-pool-base-interval: 30
+  dead-pool-max-interval: 300
+  backoff-multiplier: 2.0
+
