@@ -29,12 +29,12 @@ public class CacheService {
                     .healthUrl(loadBalancerDto.getHealthCheckConfig().getEndpoint())
                     .healthCheckInterval(loadBalancerDto.getHealthCheckConfig().getInterval())
                     .tenantId(loadBalancerDto.getTenantId())
-                    .eventType(CacheEventTypes.MOVED_TO_DEADPOOL.toString())
+                    .eventType(CacheEventTypes.MOVED_TO_ACTIVEPOOL.toString())
                     .lbId(lbId)
                     .build();
-            redisTemplate.convertAndSend(ValkeyPools.DEAD_POOL,
+            redisTemplate.convertAndSend(ValkeyPools.ACTIVE_POOL,
                     mapper.writeValueAsString(server));
-            redisTemplate.opsForHash().put(String.format("%s:%s", ValkeyPools.DEAD_POOL, server.getTenantId()), server.getIpAddress(), mapper.writeValueAsString(server));
+            redisTemplate.opsForHash().put(String.format("%s:%s", ValkeyPools.ACTIVE_POOL, server.getTenantId()), server.getServerIp(), mapper.writeValueAsString(server));
         }
         catch (Exception e)
         {

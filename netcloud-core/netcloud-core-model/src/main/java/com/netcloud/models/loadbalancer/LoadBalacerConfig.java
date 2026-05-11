@@ -24,7 +24,6 @@ public class LoadBalacerConfig {
     private String tenantId;
     private LoadBalancerType loadBalancerType;
     private Instant dateCreated;
-    private RoutingProtocol routingProtocol;
     private RoutingPoliciesEnum routingAlgorithm;
     private BackendConfig backendConfig;
     private HealthCheckConfig healthCheckConfig;

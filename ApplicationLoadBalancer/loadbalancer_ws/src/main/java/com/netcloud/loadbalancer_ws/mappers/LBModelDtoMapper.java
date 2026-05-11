@@ -13,6 +13,7 @@ import java.util.List;
 public interface LBModelDtoMapper {
 
     @Mapping(source = "name", target = "loadBalancerName")
+    @Mapping(target = "id", ignore = true)
     LoadBalacerConfig toConfig(LoadBalancerDto model);
 
     @Mapping(source = "loadBalancerName", target = "name")

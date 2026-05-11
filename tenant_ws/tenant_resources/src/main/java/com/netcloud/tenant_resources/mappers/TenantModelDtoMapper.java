@@ -2,14 +2,13 @@ package com.netcloud.tenant_resources.mappers;
 
 import com.netcloud.dtos.tenant.Tenant;
 import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-
+import org.springframework.stereotype.Component;
 import java.util.List;
 
+@Component
 @Mapper(componentModel = "spring")
 public interface TenantModelDtoMapper {
 
-    @Mapping(source = "name", target = "loadBalancerName")
     com.netcloud.models.tenant.Tenant toModel(Tenant model);
 
     Tenant toDto(com.netcloud.models.tenant.Tenant config);

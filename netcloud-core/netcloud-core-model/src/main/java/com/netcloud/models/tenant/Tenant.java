@@ -1,8 +1,7 @@
 package com.netcloud.models.tenant;
 
 import com.netcloud.models.loadbalancer.LoadBalacerConfig;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.Data;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.DocumentReference;
@@ -11,11 +10,14 @@ import java.time.Instant;
 import java.util.List;
 
 
-@Getter
-@AllArgsConstructor
+@Data
 @Document("tenant")
 public class Tenant {
     private String tenantName;
+    private String company;
+    private String phoneNumber;
+    private String email;
+    private String password;
     private String tenantId;
     @DocumentReference(lazy = true)
     @Indexed

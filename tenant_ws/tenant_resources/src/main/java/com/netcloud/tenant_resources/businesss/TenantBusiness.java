@@ -1,5 +1,6 @@
 package com.netcloud.tenant_resources.businesss;
 
+import com.netcloud.dtos.tenant.LoginResponse;
 import com.netcloud.dtos.tenant.Tenant;
 import com.netcloud.tenant_resources.services.TenantService;
 import lombok.RequiredArgsConstructor;
@@ -16,5 +17,13 @@ public class TenantBusiness {
     public Tenant saveTenant(Tenant tenant)
     {
         return tenantService.addTenantDetails(tenant);
+    }
+
+    public LoginResponse login(String email, String password) {
+        return tenantService.login(email, password);
+    }
+
+    public LoginResponse registerTenant(Tenant tenant) {
+        return tenantService.registerTenant(tenant);
     }
 }

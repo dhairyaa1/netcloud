@@ -26,6 +26,7 @@ public class RoutingResource {
             HttpServletRequest request,
             HttpServletResponse servletResponse) throws IOException, InterruptedException {
         try {
+            log.info("Started the request");
             Secret secret = secretGenerator.getClaimsFromSecret(tenantSecret);
             HttpResponse<String> response = (HttpResponse<String>) routingBAL.route(request, secret);
             servletResponse.setStatus(response.statusCode());
@@ -35,7 +36,11 @@ public class RoutingResource {
         }
         catch(Exception e)
         {
-            log.info("Message is {}",e.getMessage());
+            log.info("Message is {} exception is {}",e.getMessage(), e.getStackTrace());
         }
+    }
+    @GetMapping("/")  // Cloud Run probes "/" by default
+    public String ready() {
+        return "ok";
     }
 }

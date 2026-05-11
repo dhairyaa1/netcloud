@@ -2,6 +2,7 @@ package com.netcloud.autodiscoveryclient;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -9,7 +10,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -20,13 +20,11 @@ public class AutoDiscoveryStartup {
     @Autowired
     private RestTemplate restTemplate;
 
-    @Value("${netcloud.lb-service}")
-    private String lbService;
-
     @Value("${netcloud.autodiscovery.urls}")
     private List<String> autodiscoveryUrls;
     private String url;
 
+    @Autowired
     private ScheduledExecutorService retryExecutor;
 
 

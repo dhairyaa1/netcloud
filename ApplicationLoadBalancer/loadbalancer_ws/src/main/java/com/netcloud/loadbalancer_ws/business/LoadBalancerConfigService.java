@@ -36,15 +36,38 @@ public class LoadBalancerConfigService {
     @Transactional
     public LoadBalancerDto createLoadBalancer(LoadBalancerDto loadBalacerDto) throws JsonProcessingException {
         LoadBalacerConfig loadBalacerConfig = mapper.toConfig(loadBalacerDto);
-        loadBalacerConfig =
-                lbRepository.save(loadBalacerConfig);
+        loadBalacerConfig.setDateCreated(Instant.now());
         String secret = generator.generateSecret(loadBalacerDto.getTenantId(), loadBalacerDto.getHealthCheckConfig().getInterval(), loadBalacerConfig.getId());
         loadBalacerConfig.setUrlSecret(secret);
-        loadBalacerConfig.setDateCreated(Instant.now());
-        loadBalacerDto = mapper.toDto(lbRepository.save(loadBalacerConfig));
+        loadBalacerConfig = lbRepository.save(loadBalacerConfig);
+        loadBalacerDto = mapper.toDto(loadBalacerConfig);
         valkeyTemplate.opsForValue().set(String.format("lb:%s:details", loadBalacerConfig.getId()), loadBalacerDto);
         return loadBalacerDto;
     }
+    @Caching(evict = {
+            @CacheEvict(value = "loadbalancerByTenant", key = "#loadBalancerDto.tenantId"),
+            @CacheEvict(value = "loadbalancers", key = "#loadBalancerDto.tenantId + ':' + #loadBalancerDto.id")
+    })
+    @Transactional
+    public LoadBalancerDto updateLoadBalancer(LoadBalancerDto loadBalancerDto) throws JsonProcessingException {
+        LoadBalacerConfig existing = lbRepository.findByIdAndTenantId(loadBalancerDto.getId(), loadBalancerDto.getTenantId())
+                .orElseThrow(() -> new ResourceNotFoundException("LoadBalancer not found"));
+
+        String existingSecret = existing.getUrlSecret();
+        Instant existingDateCreated = existing.getDateCreated();
+
+        LoadBalacerConfig updated = mapper.toConfig(loadBalancerDto);
+        updated.setUrlSecret(existingSecret);
+        updated.setDateCreated(existingDateCreated);
+        if (loadBalancerDto.getId() != null && !loadBalancerDto.getId().isEmpty()) {
+            updated.setId(loadBalancerDto.getId());
+        }
+        updated = lbRepository.save(updated);
+        LoadBalancerDto result = mapper.toDto(updated);
+        valkeyTemplate.opsForValue().set(String.format("lb:%s:details", updated.getId()), result);
+        return result;
+    }
+
     public Secret getSecret(String tenantSecret) {
         return generator.getClaimsFromSecret(tenantSecret);
     }
@@ -55,7 +78,7 @@ public class LoadBalancerConfigService {
     }
     @Cacheable(value = "loadbalancerByTenant", key = "#tenantId")
     public List<LoadBalancerDto> getAllByTenant(String tenantId) {
-        return mapper.toDtos (lbRepository.findByTenantId(tenantId));
+        return mapper.toDtos (lbRepository.findByTenantIdOrderByDateCreatedDesc(tenantId));
     }
     @Caching(evict = {
             @CacheEvict(value = "loadbalancerByTenant", key = "#tenantId"),
@@ -67,5 +90,10 @@ public class LoadBalancerConfigService {
                 .orElseThrow(() -> new ResourceNotFoundException("Invalid Load Balancer ID")
                 );
         lbRepository.delete(existing);
+    }
+
+    @Transactional
+    public void deleteLoadBalancers(String tenantId, List<String> ids) {
+        lbRepository.deleteAllById(ids);
     }
 }

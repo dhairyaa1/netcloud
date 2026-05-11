@@ -16,7 +16,6 @@ public class Server {
     private String eventType;
     private int healthTimeout;
     private int backendPort;
-    private String ipAddress;
     AtomicLong connectionCount;
     long cpuUtilisation;
     long memoryUtilisation;
@@ -30,9 +29,9 @@ public class Server {
     ServerState serverState;
     public void incConnections() { connectionCount.incrementAndGet(); }
     public void decConnections() { connectionCount.decrementAndGet(); }
-    public int incFailures() { consecutiveSuccesses = 0; return ++this.consecutiveSuccesses; }
+    public int incFailures() { consecutiveSuccesses = 0; return ++this.consecutiveFailures; }
     public void resetFailures() { consecutiveFailures = 0; }
-    public int incSuccesses() { return ++consecutiveSuccesses; }
+    public int incSuccesses() {consecutiveFailures = 0; return ++consecutiveSuccesses; }
     public void resetSuccesses() { consecutiveSuccesses = 0; }
 
 }

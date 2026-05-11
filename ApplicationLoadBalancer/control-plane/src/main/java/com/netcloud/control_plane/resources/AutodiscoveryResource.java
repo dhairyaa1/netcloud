@@ -14,9 +14,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import com.netcloud.control_plane.utils.HostUtil;
 
-import java.util.Set;
-
-
 @RestController
 @RequestMapping("/")
 @RequiredArgsConstructor
@@ -31,6 +28,7 @@ public class AutodiscoveryResource {
     {
         String ipaddress = HostUtil.getClientIp(request);
         Secret secret = secretGenerator.getClaimsFromSecret(tenantSecret);
+        log.info("Request recieved from ipaddress {}, for lbid {}, tenantid {}", ipaddress, secret.getLbId(), secret.getTenantId());
         cacheService.markAsActive(secret.getLbId(), ipaddress);
         log.info("Marking ipaddress as active");
     }

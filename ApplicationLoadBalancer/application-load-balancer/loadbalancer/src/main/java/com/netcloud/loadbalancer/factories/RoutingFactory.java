@@ -19,12 +19,12 @@ public class RoutingFactory {
     private final RoutingService routingService;
     private final RedisTemplate<String, String> redisTemplate;
     private final ValkeyDeadPoolManager valkeyDeadPoolManager;
-    private ObjectMapper mapper;
+    private final ObjectMapper mapper;
     public RoutingAlgorithm routingAlgorithm(LoadBalancerDto dto)
     {
         if(dto.getRoutingAlgorithm() == RoutingPoliciesEnum.ROUND_ROBIN)
         {
-            return new RoundRobinAlgorithm(routingService, valkeyDeadPoolManager);
+            return new RoundRobinAlgorithm(routingService, redisTemplate, mapper);
         }
         else if(dto.getRoutingAlgorithm() == RoutingPoliciesEnum.LEAST_CONNECTION)
         {

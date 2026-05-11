@@ -4,3 +4,8 @@ spring:
 netcloud:
   autodiscovery:
     urls: http://localhost:9004/scg2Jf5D2YWHyRW5tPoBl2F8rdPwZfRVN-msxdtDHIOobLe11GoiiewAoztvs2qS
+
+server:
+  port: 9012
+
+instance-id: 1

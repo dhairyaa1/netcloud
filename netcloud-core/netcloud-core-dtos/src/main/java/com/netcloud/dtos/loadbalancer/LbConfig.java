@@ -8,9 +8,7 @@ import lombok.Data;
 @Data
 public class LbConfig {
     private LoadBalancerType loadBalancerType;
-    private RoutingProtocol routingProtocol;
     private RoutingPoliciesEnum routingAlgorithm;
     private HealthCheckConfig healthCheckConfig;
     private BackendConfig backendConfig;
-    private String tenantId;
 }

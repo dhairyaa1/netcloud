@@ -4,19 +4,16 @@ package com.netcloud.loadbalancer.services.valkey;
 import com.netcloud.commons.enums.ValkeyPools;
 import com.netcloud.dtos.servers.Server;
 import com.netcloud.dtos.servers.ServerState;
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.connection.MessageListener;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.listener.ChannelTopic;
-import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.ObjectMapper;
-import java.nio.charset.StandardCharsets;
+
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+
+import static com.netcloud.loadbalancer.services.valkey.ValkeyCache.*;
 
 @RequiredArgsConstructor
 @Slf4j
@@ -25,16 +22,10 @@ public class ValkeyDeadPoolManager {
 
     private final RedisTemplate<String, String> valkeyTemplate; // Identical API to RedisTemplate
     private final ObjectMapper mapper;
-    private static final ConcurrentHashMap<String, HashMap<String,Server>> localActive = new ConcurrentHashMap<>();
-    private static final ConcurrentHashMap<String, HashMap<String, Server>> localDead = new ConcurrentHashMap<>();
-    private static final int FAILURE_THRESHOLD = 2;
-    private static final int RECOVERY_THRESHOLD = 2;
-    private static final double INITIAL_RECOVERY_WEIGHT = 0.1;
 
     public void init(String tenantId) {
+        log.info("Inside init");
         syncLocalCacheFromValkey(tenantId);
-        subscribeToActivePoolEvents(tenantId);
-        subscribeToDeadPoolEvents(tenantId);
     }
 
     /**
@@ -50,8 +41,10 @@ public class ValkeyDeadPoolManager {
             }
         } else {
             int failures = server.incFailures();
+            log.info("{} failures are there", failures);
+            valkeyTemplate.opsForHash().put(String.format("%s:%s", ValkeyPools.ACTIVE_POOL, server.getTenantId()), server.getServerIp(), mapper.writeValueAsString(server));
             if (failures >= FAILURE_THRESHOLD) {
-                moveToDeadPool(server.getIpAddress(), server, tenantId, lbId);
+                moveToDeadPool(server, tenantId);
             }
         }
     }
@@ -80,29 +73,26 @@ public class ValkeyDeadPoolManager {
         if (s != null) s.decConnections();
     }
 
-    private void moveToDeadPool(String ip, Server server, String tenantId, String lbId) {
-        String activeKey = ValkeyConstants.getKey(ServerState.ACTIVE, lbId);
-        String deadKey = ValkeyConstants.getKey(ServerState.DEAD, lbId);
-        String channel = getDeadEventChannel(tenantId);
-
-        valkeyTemplate.executePipelined((org.springframework.data.redis.core.RedisCallback<Object>) conn -> {
-            conn.sRem(activeKey.getBytes(), ip.getBytes());
-            conn.sAdd(deadKey.getBytes(), ip.getBytes());
-            conn.publish(channel.getBytes(),
-                    (deadKey).getBytes(StandardCharsets.UTF_8));
-            return null;
-        });
-        log.info("Moved to dead pool");
+    private void moveToDeadPool(Server server, String tenantId) {
+        String activeKey = String.format("%s:%s", ValkeyPools.ACTIVE_POOL, tenantId);
+        String deadKey = String.format("%s:%s", ValkeyPools.DEAD_POOL, tenantId);
         server.setServerState(ServerState.DEAD);
         server.setTrafficWeight(0.0);
-        HashMap<String, Server> activeMap = localActive.getOrDefault(tenantId, new HashMap<String, Server>());
-        activeMap.remove(ip);
-        localActive.put(tenantId, activeMap);
+        valkeyTemplate.opsForHash().delete(activeKey, server.getServerIp());
+        valkeyTemplate.opsForHash().put(deadKey, server.getServerIp(), mapper.writeValueAsString(server));
+        log.info("Added to deadpool");
+        valkeyTemplate.convertAndSend(getDeadEventChannel(tenantId),
+                mapper.writeValueAsString(server));
 
-        HashMap<String, Server> deadMap = localDead.getOrDefault(tenantId, new HashMap());
-        deadMap.put(ip, server);
+        HashMap<String, Server> activeMap = localActive.get(tenantId);
+        if (activeMap != null) {
+            activeMap.remove(server.getServerIp());
+        }
+        HashMap<String, Server> deadMap = localDead.getOrDefault(tenantId, new HashMap<>());
+        deadMap.put(server.getServerIp(), server);
         localDead.put(tenantId, deadMap);
-        log.warn("Server {} moved to dead pool after {} failures", ip, FAILURE_THRESHOLD);
+
+        log.warn("Server {} moved to dead pool after {} failures", server.getServerIp(), FAILURE_THRESHOLD);
     }
 
     private void handleRecoveryProgress(Server server, String tenantId) {
@@ -115,14 +105,14 @@ public class ValkeyDeadPoolManager {
         String activeKey = String.format("%s:%s", ValkeyPools.ACTIVE_POOL, tenantId);
         String deadKey = String.format("%s:%s", ValkeyPools.DEAD_POOL, tenantId);
 
-        valkeyTemplate.opsForHash().delete(activeKey, server.getIpAddress());
+        valkeyTemplate.opsForHash().delete(activeKey, server.getServerIp());
 
        server.setServerState(ServerState.RECOVERING);
         server.setTrafficWeight(INITIAL_RECOVERY_WEIGHT);
         server.resetSuccesses();
-        valkeyTemplate.opsForHash().delete(deadKey, server.getIpAddress());
-        valkeyTemplate.opsForHash().put(activeKey, server.getIpAddress(), server);
-        valkeyTemplate.convertAndSend(ValkeyPools.ACTIVE_POOL,
+        valkeyTemplate.opsForHash().delete(deadKey, server.getServerIp());
+        valkeyTemplate.opsForHash().put(activeKey, server.getServerIp(), server);
+        valkeyTemplate.convertAndSend(getActiveEventChannel(server.getTenantId()),
                 mapper.writeValueAsString(server));
 
 //        HashMap<String, Server> activeMap = localActive.getOrDefault(tenantId, new HashMap<String, Server>());
@@ -132,7 +122,7 @@ public class ValkeyDeadPoolManager {
 //        HashMap<String, Server> deadMap = localDead.getOrDefault(tenantId, new HashMap<String, Server>());
 //        deadMap.remove(server.getIpAddress());
 //        localDead.put(tenantId, deadMap);
-        log.info("Server {} restored to active pool with {:.0f}% traffic ramp-up", server.getIpAddress(), INITIAL_RECOVERY_WEIGHT * 100);
+        log.info("Server {} restored to active pool with {:.0f}% traffic ramp-up", server.getServerIp(), INITIAL_RECOVERY_WEIGHT * 100);
     }
 
      private void syncLocalCacheFromValkey(String tenantId) {
@@ -146,6 +136,7 @@ public class ValkeyDeadPoolManager {
                  ));
         if (!activeServers.isEmpty()) {
             localActive.put(tenantId, activeServers);
+            log.info("Marking the following servers as active {}", activeServers);
         }
          Map<Object, Object> deadServersStr = valkeyTemplate.opsForHash().entries(String.format("%s:%s", ValkeyPools.DEAD_POOL, tenantId));
          HashMap<String, Server> deadServers = deadServersStr.entrySet().stream()
@@ -157,59 +148,13 @@ public class ValkeyDeadPoolManager {
                  ));
         if (!deadServers.isEmpty()) {
             localDead.put(tenantId, deadServers);
+            log.info("FMarking the following servers as dead {}", deadServers);
         }
     }
 
-    private void subscribeToActivePoolEvents(String tenantId) {
-        MessageListener listener = (message, pattern) -> {
-            String payload = new String(message.getBody(), StandardCharsets.UTF_8);
-            log.info("Got the server in active pool {}", payload);
-            Server server = mapper.readValue(payload, Server.class);
-            HashMap<String, Server> deadMap = localDead.get(tenantId);
-            deadMap.remove(server.getIpAddress());
-            server.setServerState(ServerState.RECOVERING);
-            server.setTrafficWeight(INITIAL_RECOVERY_WEIGHT);
-            server.resetSuccesses();
-            changeToActive(server, tenantId);
 
-        };
 
-        RedisMessageListenerContainer container = new RedisMessageListenerContainer();
-        container.setConnectionFactory(valkeyTemplate.getConnectionFactory());
-        container.addMessageListener(listener, new ChannelTopic(getActiveEventChannel(tenantId)));
-        container.afterPropertiesSet();
-    }
-    private void subscribeToDeadPoolEvents(String tenantId) {
-        MessageListener listener = (message, pattern) -> {
-            String payload = new String(message.getBody(), StandardCharsets.UTF_8);
-            log.info("Got the server in dead pool {}", payload);
-            Server server = mapper.readValue(payload, Server.class);
-            HashMap<String, Server> activeMap = localActive.get(tenantId);
-            activeMap.remove(server.getIpAddress());
-            server.setServerState(ServerState.DEAD);
-            server.setTrafficWeight(INITIAL_RECOVERY_WEIGHT);
-            server.resetSuccesses();
-            changeToDead(server, tenantId);
 
-        };
-
-        RedisMessageListenerContainer container = new RedisMessageListenerContainer();
-        container.setConnectionFactory(valkeyTemplate.getConnectionFactory());
-        container.addMessageListener(listener, new ChannelTopic(getDeadEventChannel(tenantId)));
-        container.afterPropertiesSet();
-    }
-    private void changeToActive(Server server, String tenantId)
-    {
-        HashMap<String, Server> activeMap = localActive.getOrDefault(tenantId, new HashMap<>());
-        activeMap.put(server.getIpAddress(), server);
-        localActive.put(tenantId, activeMap);
-    }
-    private void changeToDead(Server server, String tenantId)
-    {
-        HashMap<String, Server> deadMap = localDead.getOrDefault(tenantId, new HashMap<>());
-        deadMap.put(server.getIpAddress(), server);
-        localActive.put(tenantId, deadMap);
-    }
     private String getActiveEventChannel(String tenantId) { return String.format("%s:%s", ValkeyPools.ACTIVE_POOL, tenantId); }
     private String getDeadEventChannel(String tenantId) { return String.format("%s:%s", ValkeyPools.DEAD_POOL, tenantId); }
 }

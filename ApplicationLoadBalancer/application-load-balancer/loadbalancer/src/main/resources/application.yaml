@@ -1,14 +1,15 @@
 spring:
   application:
     name: loadbalancer
-#      host: 10.160.0.5
-#      port: 6379
-#      password: ${REDIS_PASSWORD:}
-#      timeout: 2000
-#      lettuce:
-#        pool:
-#          max-active: 8
-#          max-idle: 8
+  data:
+    redis:
+      host: 10.128.0.4
+      port: 6379
+      timeout: 2000
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
 server:
   port: 9006
 #

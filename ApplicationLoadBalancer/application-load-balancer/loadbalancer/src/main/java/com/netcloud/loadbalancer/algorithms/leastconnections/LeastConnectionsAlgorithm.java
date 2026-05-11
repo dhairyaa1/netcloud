@@ -31,7 +31,7 @@ public class LeastConnectionsAlgorithm implements RoutingAlgorithm {
         poolManager.init(loadBalancerDto.getTenantId());
         List<Server> backends = poolManager.selectServers(loadBalancerDto.getTenantId());
         List<Server> eligible = backends.stream()
-                .filter(s -> s.getServerState() == ServerState.ACTIVE ||
+                .filter(s ->
                         ThreadLocalRandom.current().nextDouble() < s.getTrafficWeight())
                 .toList();
 
@@ -39,9 +39,9 @@ public class LeastConnectionsAlgorithm implements RoutingAlgorithm {
 
         Server backend = eligible.stream()
                 .min(Comparator.comparingLong(server -> server.getConnectionCount().get())).orElse(backends.get(0));
-        httpRequest.setAttribute("BACKEND_IP", backend.getIpAddress());
-        poolManager.incrementConnections(backend.getIpAddress(), loadBalancerDto.getTenantId());
-        HttpResponse response = routingService.route(httpRequest, backend.getIpAddress(), loadBalancerDto.getBackendConfig().getPort(), loadBalancerDto.getTenantId(), loadBalancerDto.getId());
+        httpRequest.setAttribute("BACKEND_IP", backend.getServerIp());
+        poolManager.incrementConnections(backend.getServerIp(), loadBalancerDto.getTenantId());
+        HttpResponse response = routingService.route(httpRequest, backend.getServerIp(), loadBalancerDto.getBackendConfig().getPort(), httpRequest.getInputStream().readAllBytes());
         poolManager.recordResponse(backend, response.statusCode() >= 200 && response.statusCode() <300, loadBalancerDto.getTenantId(), loadBalancerDto.getId());
         return response;
     }

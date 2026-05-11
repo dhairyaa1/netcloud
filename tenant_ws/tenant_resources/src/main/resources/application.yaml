@@ -2,7 +2,13 @@ server:
   port: 9010
 
 spring:
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
   data:
     mongodb:
       uri: mongodb+srv://application_user:ncTNLiNbND5hPD5V@cluster0.nl2t8wl.mongodb.net/netcloud?retryWrites=true&w=majority&appName=Cluster0
       database: netcloud
+
+netcloud:
+  secrets:
+    secret: js12gv54364874411fegrshrhe4terlfmry325

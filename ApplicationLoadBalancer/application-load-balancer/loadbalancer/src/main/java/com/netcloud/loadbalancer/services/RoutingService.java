@@ -24,7 +24,7 @@ import java.util.Set;
 public class RoutingService {
     private final HttpClient httpClient;
     private RedisTemplate<String , String > valkey;
-    public HttpResponse route(HttpServletRequest req, String ipAddress, int port, String tenantId, String lbId) throws IOException {
+    public HttpResponse route(HttpServletRequest req, String ipAddress, int port, byte[] bodyBytes) throws IOException {
         String scheme = "http"; // Switch to "https" if backend TLS is enabled
         String path = req.getRequestURI();
         int index = path.indexOf("/", 1);
@@ -33,13 +33,9 @@ public class RoutingService {
         String targetUrl = String.format("%s://%s:%s%s%s",
                 scheme, ipAddress, port, path,
                 (query != null ? "?" + query : ""));
-
-        // 2. Build outbound request
         HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
                 .uri(URI.create(targetUrl))
                 .timeout(Duration.ofSeconds(30)); // Matches §5 failure detection window
-
-        // 3. Forward headers (filter hop-by-hop to prevent protocol corruption)
         Enumeration<String> headerNames = req.getHeaderNames();
         while (headerNames.hasMoreElements()) {
             String name = headerNames.nextElement();
@@ -51,31 +47,22 @@ public class RoutingService {
             }
         }
 
-        // Add standard proxy headers for tenant backend logging/debugging
         requestBuilder.header("X-Forwarded-For", req.getRemoteAddr());
         requestBuilder.header("X-Forwarded-Host", req.getServerName());
         requestBuilder.header("X-Forwarded-Proto", req.getScheme());
 
-        // 4. Forward request body (only for methods that carry payloads)
         String method = req.getMethod().toUpperCase();
         if (Set.of("POST", "PUT", "PATCH").contains(method)) {
-            byte[] bodyBytes = req.getInputStream().readAllBytes();
             requestBuilder.method(method, HttpRequest.BodyPublishers.ofByteArray(bodyBytes));
         } else {
             requestBuilder.method(method, HttpRequest.BodyPublishers.noBody());
         }
-
-        // 5. Execute request & stream backend response directly to tenant UI
-            try {
-                HttpResponse<String> response = httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
-
-            if (response.statusCode() >= 500) {
-                evictToDeadPool(tenantId, ipAddress, lbId);
-            }
+        log.info("Routing request to the url : {}", targetUrl);
+        try {
+            HttpResponse<String> response = httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
             return response;
         }
         catch(IOException | InterruptedException e){
-            // Backend unreachable, timeout, or connection reset
             return null; // Triggers recordResponse(ip, false)
         }
     }

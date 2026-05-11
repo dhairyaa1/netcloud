@@ -11,5 +11,5 @@ public interface LBRepository  extends MongoRepository<LoadBalacerConfig, String
 
     Optional<LoadBalacerConfig> findByIdAndTenantId(String id, String tenantId);
 
-    List<LoadBalacerConfig> findByTenantId(String tenantId);
+    List<LoadBalacerConfig> findByTenantIdOrderByDateCreatedDesc(String tenantId);
 }

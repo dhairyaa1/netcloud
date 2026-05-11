@@ -25,7 +25,7 @@ public class LoadBalancerConfigResource {
     @PutMapping
     public LoadBalancerDto updateLoadbalancer(@RequestBody LoadBalancerDto lbConfig, @RequestHeader("tenant-id") String tenantID) throws JsonProcessingException {
         lbConfig.setTenantId(tenantID);
-        return loadBalancerConfigService.createLoadBalancer(lbConfig);
+        return loadBalancerConfigService.updateLoadBalancer(lbConfig);
     }
 
     @GetMapping
@@ -53,5 +53,11 @@ public class LoadBalancerConfigResource {
     public void delete(@RequestHeader("tenant-id") String tenantId, @PathVariable String lbId)
     {
         loadBalancerConfigService.deleteLoadBalancer(tenantId, lbId);
+    }
+
+    @DeleteMapping("/bulk")
+    public void deleteBulk(@RequestHeader("tenant-id") String tenantId, @RequestBody List<String> ids)
+    {
+        loadBalancerConfigService.deleteLoadBalancers(tenantId, ids);
     }
 }
