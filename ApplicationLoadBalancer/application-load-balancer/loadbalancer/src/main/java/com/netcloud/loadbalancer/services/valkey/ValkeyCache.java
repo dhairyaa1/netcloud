@@ -5,6 +5,7 @@ import com.netcloud.dtos.servers.Server;
 import com.netcloud.dtos.servers.ServerState;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.connection.MessageListener;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -18,6 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @RequiredArgsConstructor
+@Service
 public class ValkeyCache {
     private  RedisMessageListenerContainer listenerContainer;
     public static final int FAILURE_THRESHOLD = 2;
@@ -26,7 +28,7 @@ public class ValkeyCache {
     private final ObjectMapper mapper;
     public static final ConcurrentHashMap<String, HashMap<String,Server>> localActive = new ConcurrentHashMap<>();
     public static final ConcurrentHashMap<String, HashMap<String, Server>> localDead = new ConcurrentHashMap<>();
-    private final RedisTemplate<String, String> valkeyTemplate; // Identical API to RedisTemplate
+    private final RedisTemplate<String, String> valkeyTemplate;
 
     @PostConstruct
     private void startListener() {
@@ -42,49 +44,46 @@ public class ValkeyCache {
         return (message, pattern) -> {
             String payload = new String(message.getBody(), StandardCharsets.UTF_8);
             String channel = new String(message.getChannel(), StandardCharsets.UTF_8);
-            String tenantId = extractTenantId(channel);
-            log.info("Got the server in dead pool for tenant {}: {}", tenantId, payload);
+            String lbId = channel.substring(channel.lastIndexOf(':') + 1);
+            log.info("Got the server in dead pool for lbId {}: {}", lbId, payload);
             Server server = mapper.readValue(payload, Server.class);
             server.setServerState(ServerState.DEAD);
             server.setTrafficWeight(INITIAL_RECOVERY_WEIGHT);
             server.resetSuccesses();
-            changeToDead(server, tenantId);
+            changeToDead(server, lbId);
         };
     }
     private MessageListener createActivePoolListener() {
         return (message, pattern) -> {
+            log.info("Got some active servers");
             String payload = new String(message.getBody(), StandardCharsets.UTF_8);
             String channel = new String(message.getChannel(), StandardCharsets.UTF_8);
-            String tenantId = extractTenantId(channel);
-            log.info("Got the server in active pool for tenant {}: {}", tenantId, payload);
+            String lbId = channel.substring(channel.lastIndexOf(':') + 1);
+            log.info("Got the server in active pool for lbId {}: {}", lbId, payload);
             Server server = mapper.readValue(payload, Server.class);
             server.setServerState(ServerState.RECOVERING);
             server.setTrafficWeight(INITIAL_RECOVERY_WEIGHT);
             server.resetSuccesses();
-            changeToActive(server, tenantId);
+            changeToActive(server, lbId);
         };
     }
 
-    private String extractTenantId(String channel) {
-        return channel.substring(channel.lastIndexOf(':') + 1);
-    }
-    private void changeToActive(Server server, String tenantId)
+    private void changeToActive(Server server, String lbId)
     {
-        HashMap<String, Server> activeMap = localActive.getOrDefault(tenantId, new HashMap<>());
-        activeMap.put(server.getServerIp(), server);
-        localActive.put(tenantId, activeMap);
-        HashMap<String, Server> deadMap = localDead.get(tenantId);
+        localActive.computeIfAbsent(lbId, k -> new HashMap<>())
+                .put(server.getServerIp(), server);
+        log.info("localactive now is {}", localActive);
+        HashMap<String, Server> deadMap = localDead.get(lbId);
         if (deadMap != null) {
             deadMap.remove(server.getServerIp());
         }
         log.info("Marking the following servers as active {}", localActive);
     }
-    public void changeToDead(Server server, String tenantId)
+    public void changeToDead(Server server, String lbId)
     {
-        HashMap<String, Server> deadMap = localDead.getOrDefault(tenantId, new HashMap<>());
-        deadMap.put(server.getServerIp(), server);
-        localDead.put(tenantId, deadMap);
-        HashMap<String, Server> activeMap = localActive.get(tenantId);
+        localDead.computeIfAbsent(lbId, k -> new HashMap<>())
+                .put(server.getServerIp(), server);
+        HashMap<String, Server> activeMap = localActive.get(lbId);
         if (activeMap != null) {
             activeMap.remove(server.getServerIp());
         }

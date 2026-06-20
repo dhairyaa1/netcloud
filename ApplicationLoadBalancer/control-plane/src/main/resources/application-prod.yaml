@@ -1,0 +1,13 @@
+spring:
+  config:
+    activate:
+      on-profile: prod
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+netcloud:
+  secrets:
+    secret: ${NETCLOUD_SECRET}
+control-plane:
+  total-nodes: ${CONTROL_PLANE_TOTAL_NODES:1}

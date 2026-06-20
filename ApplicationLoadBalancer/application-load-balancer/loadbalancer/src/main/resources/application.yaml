@@ -1,17 +1,8 @@
 spring:
   application:
     name: loadbalancer
-  data:
-    redis:
-      host: 10.128.0.4
-      port: 6379
-      timeout: 2000
-      lettuce:
-        pool:
-          max-active: 8
-          max-idle: 8
 server:
-  port: 9006
+  port: 80
 #
 #redis1:
 #  host: localhost

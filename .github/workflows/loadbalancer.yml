@@ -1,0 +1,18 @@
+name: Build Loadbalancer
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ApplicationLoadBalancer/application-load-balancer/loadbalancer/**'
+      - 'netcloud-core/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and push
+        run: |
+          docker build -t ${{ vars.REGISTRY }}netcloud/loadbalancer:${{ github.sha }} ApplicationLoadBalancer/application-load-balancer/loadbalancer
+          docker push ${{ vars.REGISTRY }}netcloud/loadbalancer:${{ github.sha }}

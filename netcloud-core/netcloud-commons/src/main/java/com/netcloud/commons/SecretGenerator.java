@@ -1,6 +1,7 @@
 package com.netcloud.commons;
 import com.netcloud.commons.dto.Secret;
 import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -17,6 +18,7 @@ import java.util.Map;
  * This service handles manual AES encryption and decryption for the tenantsecret.
  * This is used to pack tenantId and interval into a single encrypted string for URLs.
  */
+@Slf4j
 @Service
 public class SecretGenerator {
 
@@ -32,6 +34,7 @@ public class SecretGenerator {
     }
     public String generateSecret(String tenantId, long interval, String lbId) {
         try {
+
             String dataToEncrypt = tenantId + "|" + interval + "|" + lbId;
             Cipher cipher = Cipher.getInstance("AES");
             cipher.init(Cipher.ENCRYPT_MODE, key);
@@ -44,6 +47,7 @@ public class SecretGenerator {
 
     public Secret getClaimsFromSecret(String encryptedSecret) {
         try {
+            log.info("secret is {}", encryptedSecret);
             Cipher cipher = Cipher.getInstance("AES");
             cipher.init(Cipher.DECRYPT_MODE, key);
             byte[] decodedBytes = Base64.getUrlDecoder().decode(encryptedSecret);

@@ -24,8 +24,7 @@ import java.util.Set;
 public class RoutingService {
     private final HttpClient httpClient;
     private RedisTemplate<String , String > valkey;
-    public HttpResponse route(HttpServletRequest req, String ipAddress, int port, byte[] bodyBytes) throws IOException {
-        String scheme = "http"; // Switch to "https" if backend TLS is enabled
+    public HttpResponse route(HttpServletRequest req, String ipAddress, int port, byte[] bodyBytes, String scheme, int timeout) throws IOException {
         String path = req.getRequestURI();
         int index = path.indexOf("/", 1);
         path = path.substring(index);
@@ -35,7 +34,7 @@ public class RoutingService {
                 (query != null ? "?" + query : ""));
         HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
                 .uri(URI.create(targetUrl))
-                .timeout(Duration.ofSeconds(30)); // Matches §5 failure detection window
+                .timeout(Duration.ofSeconds(timeout)); // Matches §5 failure detection window
         Enumeration<String> headerNames = req.getHeaderNames();
         while (headerNames.hasMoreElements()) {
             String name = headerNames.nextElement();
@@ -50,7 +49,6 @@ public class RoutingService {
         requestBuilder.header("X-Forwarded-For", req.getRemoteAddr());
         requestBuilder.header("X-Forwarded-Host", req.getServerName());
         requestBuilder.header("X-Forwarded-Proto", req.getScheme());
-
         String method = req.getMethod().toUpperCase();
         if (Set.of("POST", "PUT", "PATCH").contains(method)) {
             requestBuilder.method(method, HttpRequest.BodyPublishers.ofByteArray(bodyBytes));
@@ -60,6 +58,7 @@ public class RoutingService {
         log.info("Routing request to the url : {}", targetUrl);
         try {
             HttpResponse<String> response = httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
+            log.info("Response is {}", response);
             return response;
         }
         catch(IOException | InterruptedException e){

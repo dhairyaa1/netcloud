@@ -1,0 +1,9 @@
+spring:
+  config:
+    activate:
+      on-profile: prod
+netcloud:
+  autodiscovery:
+    urls: ${AUTODISCOVERY_URL}
+
+instance-id: ${INSTANCE_ID}

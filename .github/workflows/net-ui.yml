@@ -1,0 +1,17 @@
+name: Build Net UI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'NetCloudUI/net-ui/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and push
+        run: |
+          docker build -t ${{ vars.REGISTRY }}netcloud/net-ui:${{ github.sha }} NetCloudUI/net-ui
+          docker push ${{ vars.REGISTRY }}netcloud/net-ui:${{ github.sha }}

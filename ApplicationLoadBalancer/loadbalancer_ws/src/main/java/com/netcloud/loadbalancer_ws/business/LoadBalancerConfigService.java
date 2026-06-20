@@ -10,6 +10,7 @@ import com.netcloud.loadbalancer_ws.mappers.LBModelDtoMapper;
 import com.netcloud.loadbalancer_ws.repositories.LBRepository;
 import com.netcloud.models.loadbalancer.LoadBalacerConfig;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
@@ -22,6 +23,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class LoadBalancerConfigService {
 
     private final LBRepository lbRepository;
@@ -35,8 +37,10 @@ public class LoadBalancerConfigService {
     })
     @Transactional
     public LoadBalancerDto createLoadBalancer(LoadBalancerDto loadBalacerDto) throws JsonProcessingException {
+        log.info("Recieved routingalgorithm as {}", loadBalacerDto.getRoutingAlgorithm());
         LoadBalacerConfig loadBalacerConfig = mapper.toConfig(loadBalacerDto);
         loadBalacerConfig.setDateCreated(Instant.now());
+        loadBalacerConfig = lbRepository.save(loadBalacerConfig);
         String secret = generator.generateSecret(loadBalacerDto.getTenantId(), loadBalacerDto.getHealthCheckConfig().getInterval(), loadBalacerConfig.getId());
         loadBalacerConfig.setUrlSecret(secret);
         loadBalacerConfig = lbRepository.save(loadBalacerConfig);
@@ -50,6 +54,8 @@ public class LoadBalancerConfigService {
     })
     @Transactional
     public LoadBalancerDto updateLoadBalancer(LoadBalancerDto loadBalancerDto) throws JsonProcessingException {
+        log.info("Recieved routingalgorithm as {}", loadBalancerDto.getRoutingAlgorithm());
+
         LoadBalacerConfig existing = lbRepository.findByIdAndTenantId(loadBalancerDto.getId(), loadBalancerDto.getTenantId())
                 .orElseThrow(() -> new ResourceNotFoundException("LoadBalancer not found"));
 
@@ -73,8 +79,10 @@ public class LoadBalancerConfigService {
     }
     @Cacheable(value = "loadbalancers", key =  "#tenantId + ':' + #lbId")
     public LoadBalancerDto getLoadBalancer(String tenantId, String lbId) {
-        return mapper.toDto(lbRepository.findByIdAndTenantId(lbId, tenantId)
-                .orElseThrow(() -> new ResourceNotFoundException("LoadBalancer not found")));
+        LoadBalacerConfig loadBalacerConfig = lbRepository.findByIdAndTenantId(lbId, tenantId)
+                .orElseThrow(() -> new ResourceNotFoundException("LoadBalancer not found"));
+        log.info("lbid from secret is {}", generator.getClaimsFromSecret(loadBalacerConfig.getUrlSecret()).getLbId());
+        return mapper.toDto(loadBalacerConfig);
     }
     @Cacheable(value = "loadbalancerByTenant", key = "#tenantId")
     public List<LoadBalancerDto> getAllByTenant(String tenantId) {

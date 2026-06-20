@@ -1,0 +1,7 @@
+server:
+  port: 9679
+
+netcloud:
+  cloudrun:
+    servers-per-tenant: 2
+    replicas: 1

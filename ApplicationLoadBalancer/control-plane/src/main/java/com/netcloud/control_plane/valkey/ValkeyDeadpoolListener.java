@@ -25,6 +25,7 @@ public class ValkeyDeadpoolListener implements MessageListener {
             if (!CacheEventTypes.MOVED_TO_DEADPOOL.toString().equalsIgnoreCase(server.getEventType())) {
                 return;
             }
+            log.info("New server recieved in deadpool {}", server);
             String serverKey = server.getLbId() + ":" + server.getServerIp();
             healthChecker.startMonitoringIfAssigned(serverKey, server);
         } catch (Exception e) {

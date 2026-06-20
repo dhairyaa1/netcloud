@@ -49,11 +49,6 @@ public class HealthChecker {
     }
 
     public void startMonitoringIfAssigned(String serverKey, Server server) {
-        if (!isAssignedToTheNode(serverKey)) {
-            log.debug("Server {} not assigned to this CP node. Skipping.", serverKey);
-            return;
-        }
-
         if (activeMonitors.containsKey(serverKey)) {
             log.debug("Already monitoring {}. Ignoring duplicate event.", serverKey);
             return;
@@ -101,9 +96,9 @@ public class HealthChecker {
         if (server == null) {
             return;
         }
-
-        String healthUrl = "http://" + server.getServerIp() + ":" + server.getBackendPort() + server.getHealthUrl();
-
+        log.info("performing health check");
+        String healthUrl = server.getRoutingProtocol().name() + "://" + server.getServerIp() + ":" + server.getBackendPort() + server.getHealthUrl();
+        log.info("Routing to url {}", healthUrl);
         RestTemplate client = new RestTemplate();
         org.springframework.http.client.SimpleClientHttpRequestFactory factory =
                 new org.springframework.http.client.SimpleClientHttpRequestFactory();
@@ -156,8 +151,8 @@ public class HealthChecker {
     }
 
     private void promoteToActive(String serverKey, Server server) {
-        String activeKey = String.format("%s:%s", ValkeyPools.ACTIVE_POOL, server.getTenantId());
-        String deadKey = String.format("%s:%s", ValkeyPools.DEAD_POOL, server.getTenantId());
+        String activeKey = String.format("%s:%s", ValkeyPools.ACTIVE_POOL, server.getLbId());
+        String deadKey = String.format("%s:%s", ValkeyPools.DEAD_POOL, server.getLbId());
 
         if (server.getServerIp() == null) {
             log.error("Server IP is null in ServerEvent for key: {}", serverKey);

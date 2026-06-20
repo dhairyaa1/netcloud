@@ -3,14 +3,13 @@ package com.netcloud.loadbalancer.algorithms.roundrobin;
 import com.netcloud.dtos.loadbalancer.LoadBalancerDto;
 import com.netcloud.dtos.servers.Server;
 import com.netcloud.loadbalancer.algorithms.RoutingAlgorithm;
+import com.netcloud.loadbalancer.exceptions.BackendUnavailableException;
 import com.netcloud.loadbalancer.services.RoutingService;
-import com.netcloud.loadbalancer.services.valkey.ValkeyDeadPoolManager;
+import com.netcloud.loadbalancer.services.valkey.ValkeyPoolManager;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
-import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.net.http.HttpResponse;
@@ -23,44 +22,41 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequiredArgsConstructor
 public class RoundRobinAlgorithm implements RoutingAlgorithm {
     private final RoutingService routingService;
-    private final RedisTemplate<String, String> valkeyTemplate;
-    private final ObjectMapper mapper;
-    private final ConcurrentHashMap<String, ValkeyDeadPoolManager> valkeyDeadpoolmanagerMap = new ConcurrentHashMap<>();
+    private final ValkeyPoolManager poolManager;
     private static final ConcurrentHashMap<String, AtomicInteger> counters = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, Integer> retryCount = new ConcurrentHashMap<>();
+
     @Override
     public HttpResponse route(HttpServletRequest httpRequest, LoadBalancerDto loadBalancerDto) throws InterruptedException, IOException {
-        final int retryCount = 0;
-        ValkeyDeadPoolManager poolManager = valkeyDeadpoolmanagerMap.computeIfAbsent(loadBalancerDto.getTenantId(), k -> {
-            ValkeyDeadPoolManager deadPoolManager = new ValkeyDeadPoolManager(valkeyTemplate, mapper);
-            deadPoolManager.init(k);
-            return deadPoolManager;
-        });
-
-        List<Server> backends = poolManager.selectServers(loadBalancerDto.getTenantId());
+        poolManager.init(loadBalancerDto.getId());
+        List<Server> backends = poolManager.selectServers(loadBalancerDto.getId());
 
         if (backends == null || backends.isEmpty()) {
-            throw new RuntimeException("No active servers available");
+            throw new BackendUnavailableException("No active servers available");
         }
         List<Server> serverList = List.copyOf(backends);
         byte[] body = httpRequest.getInputStream().readAllBytes();
-        return routeRequest(getNextIndex(loadBalancerDto.getTenantId(), serverList.size()), serverList, loadBalancerDto, httpRequest, body, retryCount);
+        return routeRequest(getNextIndex(loadBalancerDto.getTenantId(), serverList.size()), serverList, loadBalancerDto, httpRequest, body);
     }
-
-    private HttpResponse routeRequest(int index, List<Server> serverList, LoadBalancerDto loadBalancerDto, HttpServletRequest httpRequest, byte[] body, int retryCount) throws IOException {
+    private HttpResponse routeRequest(int index, List<Server> serverList, LoadBalancerDto loadBalancerDto, HttpServletRequest httpRequest, byte[] body) throws IOException {
         Server server = serverList.get(index);
         String selectedIp = server.getServerIp();
         log.info("The index is {}", index);
-        HttpResponse response = routingService.route(httpRequest, selectedIp, loadBalancerDto.getBackendConfig().getPort(), body);
+        HttpResponse response = routingService.route(httpRequest, selectedIp, loadBalancerDto.getBackendConfig().getPort(), body, loadBalancerDto.getBackendConfig().getRoutingProtocol().getName(), loadBalancerDto.getHealthCheckConfig().getTimeout());
         boolean isSuccess = response != null;
         log.info("Success is {} for ip {}", isSuccess, server.getServerIp());
-        ValkeyDeadPoolManager manager = valkeyDeadpoolmanagerMap.get(loadBalancerDto.getTenantId());
-        if (manager != null) {
-            manager.recordResponse(server, isSuccess, loadBalancerDto.getTenantId(), loadBalancerDto.getId());
-        }
-        if(!isSuccess && retryCount <= serverList.size())
+        poolManager.recordResponse(server, isSuccess, loadBalancerDto.getId());
+        if(!isSuccess)
         {
-            retryCount++;
-            return routeRequest(getNextIndex(loadBalancerDto.getTenantId(), serverList.size()), serverList, loadBalancerDto, httpRequest, body, retryCount);
+            if(retryCount.getOrDefault(loadBalancerDto.getId(), 0) <= serverList.size()) {
+                retryCount.put(loadBalancerDto.getId(), retryCount.getOrDefault(loadBalancerDto.getId(), 0) + 1);
+                return routeRequest(getNextIndex(loadBalancerDto.getTenantId(), serverList.size()), serverList, loadBalancerDto, httpRequest, body);
+            }
+            else
+            {
+                retryCount.remove(loadBalancerDto.getId());
+                throw new BackendUnavailableException("All backend servers failed to respond");
+            }
         }
         return response;
     }
@@ -69,4 +65,5 @@ public class RoundRobinAlgorithm implements RoutingAlgorithm {
         AtomicInteger counter = counters.computeIfAbsent(tenantId, k -> new AtomicInteger(0));
         return counter.getAndIncrement() % serverCount;
     }
+
 }

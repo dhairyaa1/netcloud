@@ -1,5 +1,6 @@
 package com.netcloud.dtos.servers;
 
+import com.netcloud.enums.RoutingProtocol;
 import lombok.*;
 
 import java.time.Instant;
@@ -22,6 +23,7 @@ public class Server {
     int consecutiveSuccesses;
     int consecutiveFailures;
     double trafficWeight;
+    RoutingProtocol routingProtocol;
     private String status;
     private Instant lastChecked;
     private Instant timestamp;
@@ -33,5 +35,5 @@ public class Server {
     public void resetFailures() { consecutiveFailures = 0; }
     public int incSuccesses() {consecutiveFailures = 0; return ++consecutiveSuccesses; }
     public void resetSuccesses() { consecutiveSuccesses = 0; }
-
+    public void resetConnections(){connectionCount.set(0);}
 }

@@ -19,6 +19,7 @@ public class ServerResource {
     public String getApi()
     {
         count++;
+        log.info("Request catered by this server.");
         return String.format("Request catered by get method, instance-id: %s", instanceId);
     }
     @PostMapping("/request")
@@ -32,6 +33,24 @@ public class ServerResource {
     public void health()
     {
 
+    }
+
+    @GetMapping("/slow")
+    public String slowApi(@RequestParam(defaultValue = "30000") long delay) throws InterruptedException
+    {
+        log.info("Slow request started, holding for {}ms, instance-id: {}", delay, instanceId);
+        Thread.sleep(delay);
+        log.info("Slow request finished after {}ms, instance-id: {}", delay, instanceId);
+        return String.format("Slow request completed after %dms, instance-id: %s", delay, instanceId);
+    }
+
+    @GetMapping("/some-delay")
+    public String someDelay(@RequestParam(defaultValue = "5000") long delay) throws InterruptedException
+    {
+        log.info("Slow request started, holding for {}ms, instance-id: {}", delay, instanceId);
+        Thread.sleep(delay);
+        log.info("Slow request finished after {}ms, instance-id: {}", delay, instanceId);
+        return String.format("Slow request completed after %dms, instance-id: %s", delay, instanceId);
     }
 
 }

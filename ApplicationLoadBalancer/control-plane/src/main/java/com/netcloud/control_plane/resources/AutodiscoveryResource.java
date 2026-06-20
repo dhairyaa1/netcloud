@@ -2,6 +2,7 @@ package com.netcloud.control_plane.resources;
 
 import com.netcloud.commons.SecretGenerator;
 import com.netcloud.commons.dto.Secret;
+import com.netcloud.commons.utils.HostUtil;
 import com.netcloud.control_plane.services.CacheService;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -12,7 +13,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import com.netcloud.control_plane.utils.HostUtil;
 
 @RestController
 @RequestMapping("/")
