@@ -4,6 +4,7 @@ hs_err_pid*.log
 replay_pid*.log
 jmeter.log
 docker important commands.txt
+.github/
 .idea/
 target/
 ApplicationLoadBalancer/loadbalancer_ws/META-INF/
