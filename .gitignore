@@ -12,3 +12,4 @@ ApplicationLoadBalancer/loadbalancer_ws/org/
 src/test/jmeter/
 NetCloudUI/
 **/src/test/jmeter/
+.mvn/
