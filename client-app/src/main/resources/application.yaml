@@ -1,6 +1,6 @@
 spring:
   application:
-    name: demapp
+    name: client-app
 netcloud:
   autodiscovery:
     urls: https://control-plane.netclouddigital.com/pJX1M2lOr0G6EsOoJnMkaNJoaiqT1uYOgzM5H8_3vmTSUEN2YZAqzBuKANfBT05b4bbhAG1o0QagtHSK6GwkOA==
