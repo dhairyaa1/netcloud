@@ -37,11 +37,6 @@ public class ApplicationConfiguration {
     }
 
     @Bean
-    public ObjectMapper objectMapper() {
-        return new ObjectMapper();
-    }
-
-    @Bean
     public RedisTemplate<String, LbConfig> valkeyTemplate(
             RedisConnectionFactory connectionFactory,
             ObjectMapper objectMapper) {
