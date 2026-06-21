@@ -119,7 +119,7 @@ Three shared modules:
 |--------|---------|
 | `netcloud-commons` | `SecretGenerator` (AES), `JwtUtil`, `GCPUtil`, `HostUtil`, `LRUCache`, `IdGenerator`, error handling |
 | `netcloud-core-dtos` | `Server`, `LoadBalancerDto`, `LbConfig`, `Tenant` DTOs, enums (`RoutingAlgorithm`, `ServerState`, etc.) |
-| `netcloud-core-model` | MongoDB `@Document` classes: `LoadBalacerConfig`, `Tenant` |
+| `netcloud-core-model` | MongoDB `@Document` classes: `LoadBalancerConfig`, `Tenant` |
 
 ---
 

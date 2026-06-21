@@ -1,6 +1,6 @@
 package com.netcloud.models.tenant;
 
-import com.netcloud.models.loadbalancer.LoadBalacerConfig;
+import com.netcloud.models.loadbalancer.LoadBalancerConfig;
 import lombok.Data;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -21,6 +21,6 @@ public class Tenant {
     private String tenantId;
     @DocumentReference(lazy = true)
     @Indexed
-    private List<LoadBalacerConfig> loadBalancerDtos;
+    private List<LoadBalancerConfig> loadBalancerDtos;
     private Instant registeredAt;
 }

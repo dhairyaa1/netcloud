@@ -15,7 +15,7 @@ import java.time.Instant;
 @NoArgsConstructor
 @Data
 @Document(collection = "loadbalancer_config")
-public class LoadBalacerConfig {
+public class LoadBalancerConfig {
     private String loadBalancerName;
     private String urlSecret;
     @Id
