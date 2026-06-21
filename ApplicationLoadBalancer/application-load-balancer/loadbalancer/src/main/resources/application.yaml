@@ -19,4 +19,4 @@ gcp:
 
 netcloud:
   secrets:
-    secret: js12gv54364874411fegrshrhe4terlfmry325
+    secret: ${NETCLOUD_SECRET}

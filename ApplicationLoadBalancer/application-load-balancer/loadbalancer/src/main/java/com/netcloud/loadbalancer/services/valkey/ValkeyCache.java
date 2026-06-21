@@ -11,7 +11,7 @@ import org.springframework.data.redis.connection.MessageListener;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.listener.PatternTopic;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
-import tools.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
@@ -42,29 +42,37 @@ public class ValkeyCache {
     }
     private MessageListener createDeadPoolListener() {
         return (message, pattern) -> {
-            String payload = new String(message.getBody(), StandardCharsets.UTF_8);
-            String channel = new String(message.getChannel(), StandardCharsets.UTF_8);
-            String lbId = channel.substring(channel.lastIndexOf(':') + 1);
-            log.info("Got the server in dead pool for lbId {}: {}", lbId, payload);
-            Server server = mapper.readValue(payload, Server.class);
-            server.setServerState(ServerState.DEAD);
-            server.setTrafficWeight(INITIAL_RECOVERY_WEIGHT);
-            server.resetSuccesses();
-            changeToDead(server, lbId);
+            try {
+                String payload = new String(message.getBody(), StandardCharsets.UTF_8);
+                String channel = new String(message.getChannel(), StandardCharsets.UTF_8);
+                String lbId = channel.substring(channel.lastIndexOf(':') + 1);
+                log.info("Got the server in dead pool for lbId {}: {}", lbId, payload);
+                Server server = mapper.readValue(payload, Server.class);
+                server.setServerState(ServerState.DEAD);
+                server.setTrafficWeight(INITIAL_RECOVERY_WEIGHT);
+                server.resetSuccesses();
+                changeToDead(server, lbId);
+            } catch (Exception e) {
+                log.error("Failed to process dead pool message", e);
+            }
         };
     }
     private MessageListener createActivePoolListener() {
         return (message, pattern) -> {
-            log.info("Got some active servers");
-            String payload = new String(message.getBody(), StandardCharsets.UTF_8);
-            String channel = new String(message.getChannel(), StandardCharsets.UTF_8);
-            String lbId = channel.substring(channel.lastIndexOf(':') + 1);
-            log.info("Got the server in active pool for lbId {}: {}", lbId, payload);
-            Server server = mapper.readValue(payload, Server.class);
-            server.setServerState(ServerState.RECOVERING);
-            server.setTrafficWeight(INITIAL_RECOVERY_WEIGHT);
-            server.resetSuccesses();
-            changeToActive(server, lbId);
+            try {
+                log.info("Got some active servers");
+                String payload = new String(message.getBody(), StandardCharsets.UTF_8);
+                String channel = new String(message.getChannel(), StandardCharsets.UTF_8);
+                String lbId = channel.substring(channel.lastIndexOf(':') + 1);
+                log.info("Got the server in active pool for lbId {}: {}", lbId, payload);
+                Server server = mapper.readValue(payload, Server.class);
+                server.setServerState(ServerState.RECOVERING);
+                server.setTrafficWeight(INITIAL_RECOVERY_WEIGHT);
+                server.resetSuccesses();
+                changeToActive(server, lbId);
+            } catch (Exception e) {
+                log.error("Failed to process active pool message", e);
+            }
         };
     }
 

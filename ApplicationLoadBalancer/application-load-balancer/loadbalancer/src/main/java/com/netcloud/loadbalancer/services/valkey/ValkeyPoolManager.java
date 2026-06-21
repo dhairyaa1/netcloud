@@ -1,6 +1,7 @@
 package com.netcloud.loadbalancer.services.valkey;
 
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.netcloud.commons.enums.CacheEventTypes;
 import com.netcloud.commons.enums.ValkeyPools;
 import com.netcloud.dtos.servers.Server;
@@ -10,7 +11,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
-import tools.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -45,7 +46,11 @@ public class ValkeyPoolManager {
         } else {
             int failures = server.incFailures();
             log.info("{} failures are there", failures);
-            valkeyTemplate.opsForHash().put(String.format("%s:%s", ValkeyPools.ACTIVE_POOL, lbId), server.getServerIp(), mapper.writeValueAsString(server));
+            try {
+                valkeyTemplate.opsForHash().put(String.format("%s:%s", ValkeyPools.ACTIVE_POOL, lbId), server.getServerIp(), mapper.writeValueAsString(server));
+            } catch (JsonProcessingException e) {
+                log.error("Failed to serialize server for failure record", e);
+            }
             if (failures >= FAILURE_THRESHOLD) {
                 moveToDeadPool(server, lbId);
             }
@@ -73,16 +78,21 @@ public class ValkeyPoolManager {
     }
 
     private void moveToDeadPool(Server server, String lbId) {
-        String activeKey = String.format("%s:%s", ValkeyPools.ACTIVE_POOL, lbId);
-        String deadKey = String.format("%s:%s", ValkeyPools.DEAD_POOL, lbId);
-        server.setServerState(ServerState.DEAD);
-        server.setTrafficWeight(0.0);
-        server.setEventType(CacheEventTypes.MOVED_TO_DEADPOOL.toString());
-        valkeyTemplate.opsForHash().delete(activeKey, server.getServerIp());
-        valkeyTemplate.opsForHash().put(deadKey, server.getServerIp(), mapper.writeValueAsString(server));
-        log.info("Added to deadpool");
-        valkeyTemplate.convertAndSend(getDeadEventChannel(lbId),
-                mapper.writeValueAsString(server));
+        try {
+            String activeKey = String.format("%s:%s", ValkeyPools.ACTIVE_POOL, lbId);
+            String deadKey = String.format("%s:%s", ValkeyPools.DEAD_POOL, lbId);
+            server.setServerState(ServerState.DEAD);
+            server.setTrafficWeight(0.0);
+            server.setEventType(CacheEventTypes.MOVED_TO_DEADPOOL.toString());
+            valkeyTemplate.opsForHash().delete(activeKey, server.getServerIp());
+            valkeyTemplate.opsForHash().put(deadKey, server.getServerIp(), mapper.writeValueAsString(server));
+            log.info("Added to deadpool");
+            valkeyTemplate.convertAndSend(getDeadEventChannel(lbId),
+                    mapper.writeValueAsString(server));
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize server for dead pool", e);
+            return;
+        }
 
         HashMap<String, Server> activeMap = localActive.get(lbId);
         if (activeMap != null) {
@@ -101,19 +111,24 @@ public class ValkeyPoolManager {
     }
 
     private void restoreToActive(Server server, String lbId) {
-        String activeKey = String.format("%s:%s", ValkeyPools.ACTIVE_POOL, lbId);
-        String deadKey = String.format("%s:%s", ValkeyPools.DEAD_POOL, lbId);
+        try {
+            String activeKey = String.format("%s:%s", ValkeyPools.ACTIVE_POOL, lbId);
+            String deadKey = String.format("%s:%s", ValkeyPools.DEAD_POOL, lbId);
 
-        valkeyTemplate.opsForHash().delete(activeKey, server.getServerIp());
+            valkeyTemplate.opsForHash().delete(activeKey, server.getServerIp());
 
-       server.setServerState(ServerState.RECOVERING);
-        server.setTrafficWeight(INITIAL_RECOVERY_WEIGHT);
-        server.resetSuccesses();
-        server.setEventType(CacheEventTypes.MOVED_TO_ACTIVEPOOL.toString());
-        valkeyTemplate.opsForHash().delete(deadKey, server.getServerIp());
-        valkeyTemplate.opsForHash().put(activeKey, server.getServerIp(), mapper.writeValueAsString(server));
-        valkeyTemplate.convertAndSend(getActiveEventChannel(lbId),
-                mapper.writeValueAsString(server));
+            server.setServerState(ServerState.RECOVERING);
+            server.setTrafficWeight(INITIAL_RECOVERY_WEIGHT);
+            server.resetSuccesses();
+            server.setEventType(CacheEventTypes.MOVED_TO_ACTIVEPOOL.toString());
+            valkeyTemplate.opsForHash().delete(deadKey, server.getServerIp());
+            valkeyTemplate.opsForHash().put(activeKey, server.getServerIp(), mapper.writeValueAsString(server));
+            valkeyTemplate.convertAndSend(getActiveEventChannel(lbId),
+                    mapper.writeValueAsString(server));
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize server for active pool restore", e);
+            return;
+        }
 
         localActive.computeIfAbsent(lbId, k -> new HashMap<>())
                 .put(server.getServerIp(), server);
@@ -125,29 +140,39 @@ public class ValkeyPoolManager {
     }
 
      private void syncLocalCacheFromValkey(String lbId) {
-        Map<Object, Object> activeServerStr = valkeyTemplate.opsForHash().entries(String.format("%s:%s", ValkeyPools.ACTIVE_POOL, lbId));
-         HashMap<String, Server> activeServers = activeServerStr.entrySet().stream()
-                 .collect(Collectors.toMap(
-                         e -> (String) e.getKey(),
-                         e -> mapper.readValue((String) e.getValue(), Server.class),
-                         (v1, v2) -> v1,
-                         HashMap::new
-                 ));
-        if (!activeServers.isEmpty()) {
-            localActive.put(lbId, activeServers);
-            log.info("Marking the following servers as active {}", activeServers);
-        }
-         Map<Object, Object> deadServersStr = valkeyTemplate.opsForHash().entries(String.format("%s:%s", ValkeyPools.DEAD_POOL, lbId));
-         HashMap<String, Server> deadServers = deadServersStr.entrySet().stream()
-                 .collect(Collectors.toMap(
-                         e -> (String) e.getKey(),
-                         e -> mapper.readValue((String) e.getValue(), Server.class),
-                         (v1, v2) -> v1,
-                         HashMap::new
-                 ));
-        if (!deadServers.isEmpty()) {
-            localDead.put(lbId, deadServers);
-            log.info("FMarking the following servers as dead {}", deadServers);
+        try {
+            Map<Object, Object> activeServerStr = valkeyTemplate.opsForHash().entries(String.format("%s:%s", ValkeyPools.ACTIVE_POOL, lbId));
+            HashMap<String, Server> activeServers = activeServerStr.entrySet().stream()
+                    .collect(Collectors.toMap(
+                            e -> (String) e.getKey(),
+                            e -> {
+                                try { return mapper.readValue((String) e.getValue(), Server.class); }
+                                catch (JsonProcessingException ex) { throw new RuntimeException(ex); }
+                            },
+                            (v1, v2) -> v1,
+                            HashMap::new
+                    ));
+            if (!activeServers.isEmpty()) {
+                localActive.put(lbId, activeServers);
+                log.info("Marking the following servers as active {}", activeServers);
+            }
+            Map<Object, Object> deadServersStr = valkeyTemplate.opsForHash().entries(String.format("%s:%s", ValkeyPools.DEAD_POOL, lbId));
+            HashMap<String, Server> deadServers = deadServersStr.entrySet().stream()
+                    .collect(Collectors.toMap(
+                            e -> (String) e.getKey(),
+                            e -> {
+                                try { return mapper.readValue((String) e.getValue(), Server.class); }
+                                catch (JsonProcessingException ex) { throw new RuntimeException(ex); }
+                            },
+                            (v1, v2) -> v1,
+                            HashMap::new
+                    ));
+            if (!deadServers.isEmpty()) {
+                localDead.put(lbId, deadServers);
+                log.info("FMarking the following servers as dead {}", deadServers);
+            }
+        } catch (RuntimeException e) {
+            log.error("Failed to sync local cache from Valkey", e.getCause());
         }
     }
 

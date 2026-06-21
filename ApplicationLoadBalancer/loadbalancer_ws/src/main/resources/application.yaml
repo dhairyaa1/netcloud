@@ -1,7 +1,7 @@
 spring:
   data:
     mongodb:
-      uri: mongodb+srv://application_user:ncTNLiNbND5hPD5V@cluster0.nl2t8wl.mongodb.net/netcloud?retryWrites=true&w=majority&appName=Cluster0
+      uri: ${MONGODB_URI}
       database: netcloud
   application:
     name: loadbalancer_ws
@@ -12,7 +12,7 @@ netcloud:
   loadbalancer:
     url: http://localhost:9006
   secrets:
-    secret: js12gv54364874411fegrshrhe4terlfmry325
+    secret: ${NETCLOUD_SECRET}
   cache:
     redis:
       time-to-live: 3600
