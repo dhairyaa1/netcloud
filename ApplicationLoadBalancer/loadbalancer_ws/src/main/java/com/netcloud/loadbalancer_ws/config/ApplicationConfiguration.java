@@ -35,10 +35,16 @@ public class ApplicationConfiguration {
         log.info("[CONFIG] AUTODISCOVERY_URL env: {}", System.getenv("AUTODISCOVERY_URL"));
         log.info("[CONFIG] Resolved autodiscovery.url: {}", autodiscoveryUrl);
     }
+
+    @Bean
+    public ObjectMapper objectMapper() {
+        return new ObjectMapper();
+    }
+
     @Bean
     public RedisTemplate<String, LbConfig> valkeyTemplate(
             RedisConnectionFactory connectionFactory,
-            ObjectMapper objectMapper) { // Inject your Jackson ObjectMapper
+            ObjectMapper objectMapper) {
 
         RedisTemplate<String, LbConfig> template = new RedisTemplate<>();
         template.setConnectionFactory(connectionFactory);
