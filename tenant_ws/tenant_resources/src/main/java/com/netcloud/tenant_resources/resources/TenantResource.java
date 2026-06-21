@@ -4,7 +4,6 @@ import com.netcloud.dtos.tenant.LoginResponse;
 import com.netcloud.dtos.tenant.Tenant;
 import com.netcloud.tenant_resources.businesss.TenantBusiness;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -15,7 +14,6 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class TenantResource {
 
-    @Autowired
     private final TenantBusiness tenantBusiness;
     @GetMapping("/getTenant")
     public Tenant tenant(@RequestParam("tenant-id") String tenantId)

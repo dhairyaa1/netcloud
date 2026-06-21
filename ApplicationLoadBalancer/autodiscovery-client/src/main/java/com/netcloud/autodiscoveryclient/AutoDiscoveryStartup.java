@@ -1,10 +1,7 @@
 package com.netcloud.autodiscoveryclient;
 
 import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
@@ -17,15 +14,17 @@ import java.util.concurrent.TimeUnit;
 @Component
 public class AutoDiscoveryStartup {
 
-    @Autowired
-    private RestTemplate restTemplate;
+    private final RestTemplate restTemplate;
+    private final ScheduledExecutorService retryExecutor;
 
     @Value("${netcloud.autodiscovery.urls}")
     private List<String> autodiscoveryUrls;
     private String url;
 
-    @Autowired
-    private ScheduledExecutorService retryExecutor;
+    public AutoDiscoveryStartup(RestTemplate restTemplate, ScheduledExecutorService retryExecutor) {
+        this.restTemplate = restTemplate;
+        this.retryExecutor = retryExecutor;
+    }
 
 
     @PostConstruct

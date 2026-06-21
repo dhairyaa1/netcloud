@@ -7,7 +7,6 @@ import com.netcloud.tenant_resources.exceptions.InvalidCredentialsException;
 import com.netcloud.tenant_resources.exceptions.TenantNotFound;
 import com.netcloud.tenant_resources.mappers.TenantModelDtoMapper;
 import com.netcloud.tenant_resources.repository.TenantRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -17,17 +16,20 @@ import java.util.UUID;
 @Service
 public class TenantService {
 
-    @Autowired
-    TenantRepository tenantRepository;
+    private final TenantRepository tenantRepository;
+    private final TenantModelDtoMapper tenantModelDtoMapper;
+    private final JwtUtil jwtUtil;
+    private final PasswordEncoder passwordEncoder;
 
-    @Autowired
-    TenantModelDtoMapper tenantModelDtoMapper;
-
-    @Autowired
-    JwtUtil jwtUtil;
-
-    @Autowired
-    PasswordEncoder passwordEncoder;
+    public TenantService(TenantRepository tenantRepository,
+                         TenantModelDtoMapper tenantModelDtoMapper,
+                         JwtUtil jwtUtil,
+                         PasswordEncoder passwordEncoder) {
+        this.tenantRepository = tenantRepository;
+        this.tenantModelDtoMapper = tenantModelDtoMapper;
+        this.jwtUtil = jwtUtil;
+        this.passwordEncoder = passwordEncoder;
+    }
 
     public Tenant getTenantDetailsById(String id) {
         Optional<com.netcloud.models.tenant.Tenant> tenant = tenantRepository.findById(id);
