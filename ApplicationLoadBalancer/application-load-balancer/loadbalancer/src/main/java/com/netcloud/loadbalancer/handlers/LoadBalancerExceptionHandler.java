@@ -1,6 +1,7 @@
 package com.netcloud.loadbalancer.handlers;
 
 import com.netcloud.commons.dto.ErrorResponse;
+import com.netcloud.commons.exceptions.NotImplementedException;
 import com.netcloud.loadbalancer.exceptions.BackendUnavailableException;
 import com.netcloud.loadbalancer.exceptions.SecretValidationException;
 import org.springframework.http.HttpStatus;
@@ -29,6 +30,16 @@ public class LoadBalancerExceptionHandler {
                 System.currentTimeMillis()
         );
         return new ResponseEntity<>(error, HttpStatus.BAD_GATEWAY);
+    }
+
+    @ExceptionHandler(NotImplementedException.class)
+    public ResponseEntity<ErrorResponse> handleNotImplemented(NotImplementedException ex) {
+        ErrorResponse error = new ErrorResponse(
+                HttpStatus.NOT_IMPLEMENTED.value(),
+                ex.getMessage(),
+                System.currentTimeMillis()
+        );
+        return new ResponseEntity<>(error, HttpStatus.NOT_IMPLEMENTED);
     }
 
     @ExceptionHandler(Exception.class)
