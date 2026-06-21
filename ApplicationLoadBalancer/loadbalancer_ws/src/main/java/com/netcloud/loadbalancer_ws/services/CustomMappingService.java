@@ -1,17 +1,15 @@
 package com.netcloud.loadbalancer_ws.services;
 
 import com.netcloud.loadbalancer_ws.config.ApplicationConfiguration;
+import lombok.RequiredArgsConstructor;
 import org.mapstruct.Named;
 import org.springframework.stereotype.Service;
 
 @Service
+@RequiredArgsConstructor
 public class CustomMappingService {
 
     private final ApplicationConfiguration config;
-
-    public CustomMappingService(ApplicationConfiguration config) {
-        this.config = config;
-    }
     @Named("getLbUrl")
     public String getLBUrl(String secret) {
         return config.getLbUrl() + "/" + secret;

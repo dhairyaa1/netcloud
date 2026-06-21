@@ -1,6 +1,7 @@
 package com.netcloud.autodiscoveryclient;
 
 import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -11,6 +12,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
+@RequiredArgsConstructor
 @Component
 public class AutoDiscoveryStartup {
 
@@ -20,11 +22,6 @@ public class AutoDiscoveryStartup {
     @Value("${netcloud.autodiscovery.urls}")
     private List<String> autodiscoveryUrls;
     private String url;
-
-    public AutoDiscoveryStartup(RestTemplate restTemplate, ScheduledExecutorService retryExecutor) {
-        this.restTemplate = restTemplate;
-        this.retryExecutor = retryExecutor;
-    }
 
 
     @PostConstruct
