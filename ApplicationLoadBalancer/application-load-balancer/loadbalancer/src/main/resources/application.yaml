@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: loadbalancer
+server:
+  port: 80
+#
+#redis1:
+#  host: localhost
+#
+#redis2:
+#  host: localhost
+
+lbWebService:
+  host: localhost
+  port: 9090
+
+gcp:
+  meta-zone: http://metadata.google.internal/computeMetadata/v1/instance/zone
+
+netcloud:
+  secrets:
+    secret: ${NETCLOUD_SECRET}

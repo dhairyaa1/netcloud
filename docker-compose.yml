@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  valkey:
+    image: valkey/valkey:7.2-alpine
+    ports:
+      - "6379:6379"
+    command: valkey-server --appendonly no
+
+  control-plane:
+    image: ${REGISTRY}netcloud/control-plane:latest
+    ports:
+      - "9004:9004"
+    environment:
+      - SPRING_DATA_REDIS_HOST=valkey
+      - SPRING_DATA_REDIS_PORT=6379
+    depends_on:
+      - valkey
+
+  loadbalancer:
+    image: ${REGISTRY}netcloud/loadbalancer:latest
+    ports:
+      - "9342:9342"
+    environment:
+      - SPRING_DATA_REDIS_HOST=valkey
+      - SPRING_DATA_REDIS_PORT=6379
+    depends_on:
+      - valkey
+
+  net-ui:
+    image: ${REGISTRY}netcloud/net-ui:latest
+    ports:
+      - "80:80"
+    depends_on:
+      - control-plane
+
+  client-app:
+    image: ${REGISTRY}netcloud/client-app:latest
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATA_REDIS_HOST=valkey
+      - SPRING_DATA_REDIS_PORT=6379
+    depends_on:
+      - valkey

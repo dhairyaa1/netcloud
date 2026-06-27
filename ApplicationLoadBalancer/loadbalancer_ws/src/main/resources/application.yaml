@@ -1,0 +1,29 @@
+spring:
+  data:
+    mongodb:
+      uri: ${MONGODB_URI}
+      database: netcloud
+  application:
+    name: loadbalancer_ws
+netcloud:
+  assignable-server-count: 3
+  autodiscovery:
+    url: http://localhost:9004
+  loadbalancer:
+    url: http://localhost:9006
+  secrets:
+    secret: ${NETCLOUD_SECRET}
+  cache:
+    redis:
+      time-to-live: 3600
+server:
+  port: 9090
+
+  # Ensure all internal errors are logged
+logging:
+  level:
+    root: INFO
+    org:
+      springframework:
+        web:
+          DEBUG

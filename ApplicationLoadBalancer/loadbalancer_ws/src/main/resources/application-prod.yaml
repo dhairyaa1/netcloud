@@ -1,0 +1,9 @@
+spring:
+  config:
+    activate:
+      on-profile: prod
+netcloud:
+  autodiscovery:
+    url: ${AUTODISCOVERY_URL}
+  loadbalancer:
+    url: ${LOADBALANCER_URL}

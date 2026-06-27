@@ -1,0 +1,11 @@
+spring:
+  application:
+    name: client-app
+netcloud:
+  autodiscovery:
+    urls: ${AUTODISCOVERY_URL}
+
+server:
+  port: 9012
+
+instance-id: 1
